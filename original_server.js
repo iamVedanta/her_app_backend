@@ -3,21 +3,19 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const mongoose = require("mongoose");
-const fs = require("fs");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const fs = require("fs");
 
-// Ensure uploads directory exists
 const uploadDir = "uploads";
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 app.use("/uploads", express.static("uploads"));
 
-// Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -26,7 +24,6 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.log(err));
 
-// Multer Storage Configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -38,38 +35,36 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Mongoose Schema
-const ReportSchema = new mongoose.Schema({
+const FormSchema = new mongoose.Schema({
   name: String,
-  photoUrl: String,
+  photos: [String],
   location: { latitude: Number, longitude: Number },
   description: String,
-  createdAt: { type: Date, default: Date.now },
 });
 
-const Report = mongoose.model("Report", ReportSchema);
+const Form = mongoose.model("Form", FormSchema);
 
-// API to Submit Report
-app.post("/submit-report", upload.single("photo"), async (req, res) => {
+app.post("/submit", upload.array("photos", 5), async (req, res) => {
   try {
     const { name, latitude, longitude, description } = req.body;
-    const photoUrl = req.file ? req.file.path : null;
+    const photos = req.files.map((file) => file.path);
 
-    const reportData = new Report({
+    const formData = new Form({
       name,
-      photoUrl,
+      photos,
       location: { latitude, longitude },
       description,
     });
 
-    await reportData.save();
+    await formData.save();
     res
       .status(201)
-      .json({ message: "Report submitted successfully!", data: reportData });
+      .json({ message: "Form submitted successfully  !!", data: formData });
   } catch (error) {
-    res.status(500).json({ error: "Failed to submit report" });
+    res.status(500).json({ error: "Failed to submit form" });
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}...`));
+const PORT = process.env.PORT;
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}.....`));
